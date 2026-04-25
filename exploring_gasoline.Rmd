@@ -1,0 +1,16 @@
+---
+title: "exploring_gasoline"
+output: html_document
+date: "2026-04-25"
+---
+
+```{r}
+serie=window(ts(read.table("Gasolina.dat"),start=1993,freq=12))
+```
+
+
+```{r}
+plot(serie, main="Gasoline consumption in Spain", ylab="Thousands of tons")
+abline(v=1993:2020,lty=3,col=4)
+```
+
