@@ -12,5 +12,6 @@ serie=window(ts(read.table("Gasolina.dat"),start=1993,freq=12))
 ```{r}
 plot(serie, main="Gasoline consumption in Spain", ylab="Thousands of tons")
 abline(v=1993:2020,lty=3,col=4)
+abline(h= 600)
 ```
 
