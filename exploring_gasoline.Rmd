@@ -1,8 +1,17 @@
 ---
 title: "exploring_gasoline"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    toc_float: true
 date: "2026-04-25"
 ---
+
+## Exploring dataset
+
+### Subtitulo
+
+#### Otro nivel
 
 ```{r}
 serie=window(ts(read.table("Gasolina.dat"),start=1993,freq=12))
@@ -15,3 +24,92 @@ abline(v=1993:2020,lty=3,col=4)
 abline(h= 600)
 ```
 
+
+```{r}
+mean(serie)
+sd(serie)
+```
+
+```{r}
+boxplot(serie~floor(time(serie)))
+```
+
+
+```{r}
+m=apply(matrix(serie,nr=12),2,mean)
+v=apply(matrix(serie,nr=12),2,var)
+plot(m,v,xlab="Medias anuales",ylab="Varianzas anuales",main="serie")
+abline(lm(v~m),col=2,lty=3,lwd=2)
+```
+
+
+```{r}
+lnserie <- log(serie)
+
+monthplot(lnserie)
+```
+
+
+```{r}
+d12lnserie <- diff(lnserie,12)
+plot(d12lnserie)
+abline(h= mean(d12lnserie), col= 2)
+
+```
+
+
+```{r}
+plot(decompose(lnserie))
+```
+
+```{r}
+
+```
+
+
+
+```{r}
+var(serie)
+var(lnserie)
+var(d12lnserie)
+var(diff(d12lnserie))
+```
+
+```{r}
+d1d12lnserie <- diff(d12lnserie)
+mean(d12lnserie)
+mean(d1d12lnserie)
+```
+
+```{r}
+plot(d1d12lnserie)
+```
+
+```{r}
+var(d1d12lnserie)
+var(diff(d1d12lnserie)) 
+```
+
+
+### Possible models
+
+```{r}
+par(mfrow = c(1,2))
+acf(d1d12lnserie, main = "ACF", ylim=c(-1,1),col=c(2,rep(1,11)),lwd=2,lag.max=72)
+pacf(d1d12lnserie, main = "PACF", lim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=72)
+```
+
+
+```{r}
+# install.packages("TSA")
+library(TSA)
+
+```
+
+
+```{r}
+eacf(d1d12lnserie)
+```
+
+
+## Models 
