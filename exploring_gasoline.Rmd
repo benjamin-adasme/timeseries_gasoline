@@ -112,9 +112,13 @@ Regular part:
 - MA(2)
 - ARMA(1,2)
 
+*Explain why those 4 models were selected*
+
+
 
 ```{r}
 #################Validation#################################
+library(tseries)
 validation=function(model,dades){
   s=frequency(get(model$series))
   resid=model$residuals
@@ -299,13 +303,22 @@ coef(mod4)/sqrt(diag(mod4$var.coef))
 *Note: Seasonal part = MA(1)
 
 ```{r}
+library(kableExtra)
+library(dplyr)
 comp_models <- data.frame("Models" = c("MA(1)", "ARMA(1,1)", "MA(2)", "ARMA(1,2)"),
                           "Log-Likelihood" = c(mod1$loglik, mod2$loglik, mod3$loglik, mod4$loglik),
                           "AIC" = c(mod1$aic, mod2$aic, mod3$aic, mod4$aic))
 
-comp_models
+
+
+best_rows <- order(comp_models$AIC)[1:2]
+
+kbl(comp_models, booktabs = TRUE, caption = "Model Comparison") %>%
+  kable_styling(latex_options = "hold_position", full_width = FALSE) %>%
+  row_spec(best_rows, bold = TRUE)
 ```
 
+Based on the values of **log likelihood** y **AIC**, **MA(2)** , **ARMA(1,2)** are the two best performing models. 
 
 ## Validation
 
@@ -317,12 +330,14 @@ model=mod3
 validation(model,dades)
 ```
 
-What to interpretate:
+*What to interpretate:*
 
-- Residuals: normality, homogeneity and independence
-- Volatility (models for the variance)
-- outlier detection
-- Independence: Ljung box () and durbin watson test 
+*- Residuals: normality, homogeneity and independence*
+*- Volatility (models for the variance)*
+*- outlier detection*
+*- Independence: Ljung box () and durbin watson test*
+*- Discussing causality and invertibility based on polynomial values of MA*
+*Compare sample ACF/PACF with theoretical ACF/PACF.*
 
 ### ARMA(1,2)
 
@@ -332,6 +347,14 @@ model=mod4
 validation(model,dades)
 ```
 
+*What to interpretate:*
+
+*- Residuals: normality, homogeneity and independence*
+*- Volatility (models for the variance)*
+*- outlier detection*
+*- Independence: Ljung box () and durbin watson test*
+*- Discussing causality and invertibility based on polynomial values of MA*
+*Compare sample ACF/PACF with theoretical ACF/PACF.*
 
 ## Prediction assesment & Forecast
 
@@ -366,6 +389,8 @@ pr<-ts(exp(pr),start=ultim,freq=12)
 ts.plot(serie,tl,tu,pr,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=c(2014,2020),ylim=c(300,600),type="o",main=paste("Model ARIMA(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12",sep=""))
 abline(v=2014:2020,lty=3,col=4)
 ```
+
+Model MA(2) is stable
 
 ```{r}
 obs=window(serie,start=ultim)
@@ -438,6 +463,8 @@ ts.plot(serie,tl,tu,pr,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=c(2014,2020),ylim=c(30
 abline(v=2014:2020,lty=3,col=4)
 ```
 
+Model ARMA(1,2) is stable
+
 ```{r}
 obs=window(serie,start=ultim)
 
@@ -455,6 +482,7 @@ mCI1=mean(tu-tl)
 cat("\nMean Length CI: ",mCI1)
 ```
 
+*comment on mean length of confidence interval of both models and how both are almost the same and also compare RMSE, MAE, RMSPE AND MAPE of both models*
 
 ```{r}
 (previs=window(cbind(tl,pr,tu,serie,error=round(serie-pr,3)),start=ultim))
@@ -480,6 +508,8 @@ abline(v=2015:2021,lty=3,col=4)
 (previs2=window(cbind(tl1,pr1,tu1),start=ultim+c(1,0)))
 ```
 
+*Critically interpret the results and discuss model limitations in the context of the data.*
+*Provide the explicit statistical expressions of the selected ARIMA models*
 
 ## ARIMAX
 
