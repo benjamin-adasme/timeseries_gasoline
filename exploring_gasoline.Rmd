@@ -536,19 +536,9 @@ data=c(start(lnserie)[1],start(lnserie)[2], length(lnserie))
 
 
 
-```{r}
-(mod3EC=arima(lnserie,order=c(0,1,2),seasonal=list(order=c(2,1,3),period=12), xreg=wEast))
+#### Cleaning on ARMA(1,2)
 
-```
 
-```{r}
-(mod3ECWD=arima(lnserie,order=c(0,1,2),seasonal=list(order=c(2,1,1),period=12), xreg=data.frame(wTradDays,wEast)))
-
-```
-
-```{r}
-validation(mod3ECWD, d1d12lnserie)
-```
 
 ```{r}
 (mod4ECWD=arima(lnserie,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12),
@@ -560,50 +550,6 @@ validation(mod3ECWD, d1d12lnserie)
 ```{r}
 validation(mod4ECWD, d1d12lnserie)
 ```
-
-### Outlier detection
-
-#### MA(2)
-
-```{r}
-modEC.atip=outdetec(mod3ECWD,dif=c(1,12),crit=2.6,LS=T)
-
-##Tabla de at?picos encontrados con su fecha
-atipics=modEC.atip$atip[order(modEC.atip$atip[,1]),]
-meses=c("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic")
-
-modEC.atip$sigma2
-
-data.frame(atipics,Fecha=paste(meses[(atipics[,1]-1)%%12+1],start(serie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=atipics[,3])
-```
-
-```{r}
-serie.lin=lineal(serie,modEC.atip$atip) # linearized series: free of outliers
-
-#Determine if variance(serie.lin) is constant and how many differences of seasonal and regular order need! In this case, variance constant, d=1, and D=1 with S=12
-
-d1d12lnserie.lin=diff(diff(serie.lin,12))
-```
-
-
-```{r}
-(modEC.lin=arima(serie.lin,order=c(0,1,2),seasonal=list(order=c(0,1,1),period=12),xreg=data.frame(wTradDays,wEast)))
-```
-
-```{r}
-EfecTD=coef(modEC.lin)["wTradDays"]*wTradDays
-EfecIN=coef(modEC.lin)["wEast"]*wEast
-serieEC.lin=serie.lin-EfecTD-EfecIN
-plot(serie-serieEC.lin)
-```
-
-```{r}
-plot(serieEC.lin,col=2)
-lines(serie)
-```
-
-
-#### ARMA(1,2)
 
 
 ```{r}
@@ -628,18 +574,132 @@ d1d12lnserie.lin=diff(diff(lnserie.lin,12))
 
 
 ```{r}
-(modEC.lin=arima(serie.lin,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12),xreg=data.frame(wTradDays,wEast)))
+(modEC.lin=arima(lnserie.lin,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12),xreg=data.frame(wTradDays,wEast)))
 ```
+
+```{r}
+validation(modEC.lin, diff(diff(lnserie.lin,12)))
+```
+
 
 ```{r}
 EfecTD=coef(modEC.lin)["wTradDays"]*wTradDays
 EfecIN=coef(modEC.lin)["wEast"]*wEast
-serieEC.lin=serie.lin-EfecTD-EfecIN
-plot(serie-serieEC.lin)
+lnserieEC.lin=lnserie.lin-EfecTD-EfecIN
+plot(lnserie-lnserieEC.lin)
 ```
 
 ```{r}
-plot(serieEC.lin,col=2)
-lines(serie)
+plot(lnserieEC.lin,col=2)
+lines(lnserie)
 ```
+
+```{r}
+par(mfrow = c(1,2))
+acf(d1d12lnserie.lin, main = "ACF", ylim=c(-1,1),col=c(2,rep(1,11)),lwd=2,lag.max=72)
+pacf(d1d12lnserie.lin, main = "PACF", ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=72)
+```
+
+
+**Possible models**
+
+- Regular
+  - MA(1)
+  - MA(3)
+  - MA(11)
+- Seasonal:
+  - MA(1)
+
+
+### Three possible models
+
+**MA(1)**
+
+```{r}
+# (mod1x=arima(d1d12lnserie.lin,order=c(0,0,1),
+#              seasonal=list(order=c(0,0,1),period=12), 
+#              xreg = data.frame(wTradDays,wEast)))
+# coef(mod1x)/sqrt(diag(mod1x$var.coef))
+(mod1x=arima(lnserie.lin,order=c(0,1,1),seasonal=list(order=c(0,1,1),period=12),
+             ,xreg=data.frame(wTradDays,wEast)))
+coef(mod1x)/sqrt(diag(mod1x$var.coef))
+```
+
+
+```{r}
+validation(mod1x, d1d12lnserie.lin)
+```
+
+
+**MA(2)**
+
+```{r}
+# (mod2x=arima(d1d12lnserie.lin,order=c(0,0,3),seasonal=list(order=c(0,0,1),period=12)))
+# coef(mod2x)/sqrt(diag(mod2x$var.coef))
+(mod2x=arima(lnserie.lin,order=c(0,1,2),seasonal=list(order=c(0,1,1),period=12),
+             # fixed = c(NA,0,NA,NA),
+             xreg=data.frame(wTradDays,wEast)))
+coef(mod2x)/sqrt(diag(mod2x$var.coef))
+```
+
+
+```{r}
+validation(mod2x, d1d12lnserie.lin)
+```
+
+
+**MA(11)**
+
+```{r}
+# (mod3x=arima(d1d12lnserie.lin,order=c(0,0,11),seasonal=list(order=c(0,0,1),period=12)))
+# coef(mod3x)/sqrt(diag(mod3x$var.coef))
+(mod3x=arima(lnserie.lin,order=c(0,1,11),seasonal=list(order=c(0,1,1),period=12),
+             # fixed = c(NA,0,NA,0,0,NA,0,NA,0,0,NA,NA),
+             xreg=data.frame(wTradDays,wEast)))
+coef(mod3x)/sqrt(diag(mod3x$var.coef))
+```
+
+
+```{r}
+validation(mod3x, d1d12lnserie.lin)
+```
+
+
+```{r}
+(mod4x=arima(lnserie.lin,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12),
+             ,xreg=data.frame(wTradDays,wEast)))
+coef(mod4x)/sqrt(diag(mod4x$var.coef))
+```
+
+```{r}
+validation(mod4x, d1d12lnserie.lin)
+```
+
+
+**MA(7) **
+
+```{r}
+(mod5x=arima(lnserie.lin,order=c(1,1,5),seasonal=list(order=c(0,1,1),period=12),
+             ,xreg=data.frame(wTradDays,wEast)))
+coef(mod5x)/sqrt(diag(mod5x$var.coef))
+```
+
+
+```{r}
+validation(mod5x, d1d12lnserie.lin)
+```
+
+
+**Next steps**
+
+1. model MA(1), MA(3) and MA(11): evaluate AIC
+2. Validation
+3. Prediction assessment and forecasting
+
+### Comparison of ARIMA models vs ARIMAX models
+
+- AIC
+- Prediction metrics (MAPE, RMSE, etc.)
+
+
 
