@@ -86,9 +86,10 @@ plot(d1d12lnserie)
 var(d1d12lnserie)
 var(diff(d1d12lnserie)) 
 ```
+# Results and discussion
 
+## Identification
 
-### Possible models
 
 ```{r}
 par(mfrow = c(1,2))
@@ -99,18 +100,21 @@ pacf(d1d12lnserie, main = "PACF", ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=
 
 
 
+In the model identification phase of the Box-Jenkins methodology, we analyze the auutocorrelation function (ACF) and partial autocorrelation function (PACF) plots of the suitably differenced stationary time series to determine the appropriate autoregressive (AR) and moving average (MA) terms.
+Based on the visual inspection of the provided correlograms, we divide our identification process into two parts: the seasonal component and the regular (non-seasonal) component.
+
+1. Seasonal Component Identification
+Because PACF shows significant activity at the first seasonal lag—rather than a clear, sharp cutoff that is shown in the ACF at the first seasonal lag moreover, a mixed seasonal process is the most appropriate choice. Therefore, we select a Seasonal ARMA(1,1) model to capture both the seasonal autoregressive (SAR) and seasonal moving average (SMA). 
 
 
-## Models 
 
-Seasonal part: ARMA (1,1)
 
-Regular part: 
+Regular Component Identification: 
 
-- MA(1)
-- ARMA(1,1)
-- MA(2)
-- ARMA(1,2)
+- MA(1): Proposed under the assumption that the regular ACF effectively cuts off after the very first lag, while the PACF tails off
+- ARMA(1,1): assuming both the ACF and PACF exhibit a tapering/decaying pattern from the first lag, capturing both a short-term autoregressive and moving average effect.
+- MA(2): Proposed to account for the possibility that the first two lags in the ACF are driving the moving average process before cutting off
+- ARMA(1,2) : mixed model included to capture any residual moving average dependencies up to the second lag while maintaining a first-order autoregressive term.
 
 *Explain why those 4 models were selected*
 
@@ -317,8 +321,9 @@ kbl(comp_models, booktabs = TRUE, caption = "Model Comparison") %>%
   kable_styling(latex_options = "hold_position", full_width = FALSE) %>%
   row_spec(best_rows, bold = TRUE)
 ```
+## Estimation
+As shown in the table above, an estimation comparison was conducted between the 4 selected models based on their goodnes sof fit and complexity. The results of **log likelihood** and **AIC** values indicate that  **MA(2)** , **ARMA(1,2)** exhibit the two best overall performing models. 
 
-Based on the values of **log likelihood** y **AIC**, **MA(2)** , **ARMA(1,2)** are the two best performing models. 
 
 ## Validation
 
