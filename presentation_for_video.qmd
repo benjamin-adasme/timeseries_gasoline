@@ -1,0 +1,352 @@
+---
+title: "Modelling gasoline consumption in Spain (1993-2019)"
+subtitle: "Time Series MESIO UPC-UB"
+date: today
+author: "Abdelrahman Eissa & Benjamín Adasme"
+format: 
+  revealjs:
+    echo: FALSE
+---
+
+## Purpose and motivation: Why gasoline?
+
+- Importance in global economy 
+- Proxy of national economy's health
+- Diesel boom in Spain in the 90s
+- Energy transition and decarbonization
+
+## Objective {.center}
+
+Capture the temporal structure of gasoline consumption, isolate exogenous effects (calendar/anomalies) and generate a robust model.
+
+## Data in its historical context
+
+```{r}
+library(knitr)
+```
+
+
+```{r}
+serie=window(ts(read.table("Gasolina.dat"),start=1993,freq=12))
+```
+
+```{r}
+plot(serie, main="Gasoline consumption in Spain", ylab="Thousands of tons")
+abline(v=1993:2020,lty=3,col=4)
+abline(h= 600)
+```
+
+## Methodology
+
+
+- The Box-Jenkins iterative method: Identification, Estimation, Validation, Prediction Assessment and Forecasting
+- From non-staionary to stationary series: logarithm, regular and seasonal differentiation.
+- Calendar effects: importance for gasoline consumption estimation
+- Outlier treatment: AO, TS, LS
+
+## Results {.center}
+
+## Model identification
+
+```{r}
+lnserie <- log(serie)
+d1d12lnserie <- diff(diff(lnserie,12))
+
+par(mfrow = c(1,2))
+acf(d1d12lnserie, main = "ACF", ylim=c(-1,1),col=c(2,rep(1,11)),lwd=2,lag.max=72)
+pacf(d1d12lnserie, main = "PACF", ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=72)
+```
+
+## Proposed ARIMA models
+
+```{r}
+mod1=arima(lnserie,order=c(0,1,1),seasonal=list(order=c(0,1,1),period=12))
+mod2=arima(lnserie,order=c(1,1,1),seasonal=list(order=c(0,1,1),period=12))
+mod3=arima(lnserie,order=c(0,1,2),seasonal=list(order=c(0,1,1),period=12))
+mod4=arima(lnserie,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12))
+
+comp_models <- tibble::tibble("Models" = c("MA(1)", "ARMA(1,1)", "MA(2)", "ARMA(1,2)"),
+                          "Log-Likelihood" = round(c(mod1$loglik, mod2$loglik, mod3$loglik, mod4$loglik),2),
+                          "AIC" = round(c(mod1$aic, mod2$aic, mod3$aic, mod4$aic),2),
+                          "AR(1)" = round(c(NA, mod2$coef[1], NA, mod4$coef[1]),2),
+                          "MA(1)" = round(c(mod1$coef[1], mod2$coef[2], mod3$coef[1], mod4$coef[2]),2),
+                          "MA(2)" = round(c(NA,NA,mod3$coef[2], mod4$coef[3]),2),
+                          "SMA(1)" = round(c(mod1$coef[2], mod2$coef[3], mod3$coef[3], mod4$coef[4]),2))
+
+kable(comp_models)
+```
+
+Seasonal MA(1). All coefficients are significant. Two models selected: MA(2) and ARMA(1,2)
+
+## Prediction
+
+```{r}
+ultim=c(2018,12)
+pdq=c(0,1,2)
+PDQ=c(0,1,1)
+
+serie2=window(serie,end=ultim)
+lnserie2=log(serie2)
+serie1=window(serie,end=ultim+c(1,0))
+lnserie1=log(serie1)
+
+modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
+modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12))
+
+pred=predict(modB,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+se<-ts(c(0,pred$se),start=ultim,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
+tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
+pr<-ts(exp(pr),start=ultim,freq=12)
+
+par(mar=c(2,2,2,2),
+    mfrow = c(2,1))
+ts.plot(serie,tl,tu,pr,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=c(2014,2020),ylim=c(300,600),type="o",main=paste("Model ARIMA(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12",sep=""))
+abline(v=2014:2020,lty=3,col=4)
+
+
+## EVAL MOD3
+
+obs=window(serie,start=ultim)
+
+mod.RMSE1=sqrt(sum((obs-pr)^2)/12)
+mod.MAE1=sum(abs(obs-pr))/12
+mod.RMSPE1=sqrt(sum(((obs-pr)/obs)^2)/12)
+mod.MAPE1=sum(abs(obs-pr)/obs)/12
+mCI1=mean(tu-tl)
+
+### Plot mod4
+
+pdq=c(1,1,2)
+PDQ=c(0,1,1)
+
+serie2=window(serie,end=ultim)
+lnserie2=log(serie2)
+serie1=window(serie,end=ultim+c(1,0))
+lnserie1=log(serie1)
+
+modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
+modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12))
+
+pred=predict(modB,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+se<-ts(c(0,pred$se),start=ultim,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
+tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
+pr<-ts(exp(pr),start=ultim,freq=12)
+
+ts.plot(serie,tl,tu,pr,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=c(2014,2020),ylim=c(300,600),type="o",main=paste("Model ARIMA(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12",sep=""))
+abline(v=2014:2020,lty=3,col=4)
+
+obs=window(serie,start=ultim)
+
+mod.RMSE2=sqrt(sum((obs-pr)^2)/12)
+mod.MAE2=sum(abs(obs-pr))/12
+mod.RMSPE2=sqrt(sum(((obs-pr)/obs)^2)/12)
+mod.MAPE2=sum(abs(obs-pr)/obs)/12
+
+mCI2=mean(tu-tl)
+```
+
+
+## 
+
+ARIMA(1,1,2) perfoms better than ARIMA(0,1,2) on the classic ARIMA approach
+
+```{r}
+comp_pred <- tibble::tibble("Model" = c("MA(2)", "ARMA(1,2)"),
+               "RMSE" = round(c(mod.RMSE1, mod.RMSE2),2),
+               "MAE" = round(c(mod.MAE1, mod.MAE2),2),
+               "RMSPE" = round(c(mod.RMSPE1, mod.RMSPE2),2),
+               "MAPE" = round(c(mod.MAPE1, mod.MAPE2),2),
+               "Mean CI" = round(c(mCI1, mCI2),2))
+
+kable(comp_pred)
+```
+
+## Calendar effects and outlier detection {.small}
+
+On the SARIMA(1,1,2)(0,1,1) was performed outlier detection to linearize the series. Also, it was included the calendar effect of working days and Easter holiday. 
+
+```{r}
+source("CalendarEffects.r")
+source("atipics2.R")
+
+
+data=c(start(lnserie)[1],start(lnserie)[2], length(lnserie))
+
+wTradDays=Wtrad(data)
+wEast=Weaster(data) 
+
+mod4ECWD=arima(lnserie,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12),
+                xreg=data.frame(wTradDays,wEast))
+
+modEC.atip=outdetec(mod4ECWD,dif=c(1,12),crit=2.6,LS=T)
+
+##Tabla de at?picos encontrados con su fecha
+atipics=modEC.atip$atip[order(modEC.atip$atip[,1]),]
+meses=c("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic")
+
+out_dates <- data.frame(atipics,Fecha=paste(meses[(atipics[,1]-1)%%12+1],start(serie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=atipics[,3])
+
+out_dates$W_coeff <- round(out_dates$W_coeff,3)
+out_dates$ABS_L_Ratio <- round(out_dates$ABS_L_Ratio,3)
+out_dates$perc.Obs <- round(out_dates$perc.Obs,3)
+
+serie.lin <- lineal(serie, modEC.atip$atip)
+lnserie.lin=lineal(lnserie,modEC.atip$atip) # linearized series: free of outliers
+
+#Determine if variance(serie.lin) is constant and how many differences of seasonal and regular order need! In this case, variance constant, d=1, and D=1 with S=12
+
+d1d12lnserie.lin=diff(diff(lnserie.lin,12))
+
+modEC.lin=arima(lnserie.lin,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12),xreg=data.frame(wTradDays,wEast))
+
+EfecTD=coef(modEC.lin)["wTradDays"]*wTradDays
+EfecIN=coef(modEC.lin)["wEast"]*wEast
+lnserieEC.lin=lnserie.lin-EfecTD-EfecIN
+
+par(mar=c(rep(3,4)))
+plot(lnserieEC.lin,col=2, main = "Outlier detection")
+lines(lnserie)
+legend("topright",
+       legend = c("Original Series",
+                  "Series without outliers"),
+       col = c(1,2),
+       lty = c(1,1))
+```
+
+## ARIMAX models
+
+```{r}
+par(mfrow = c(1,2))
+acf(d1d12lnserie.lin, main = "ACF", ylim=c(-1,1),col=c(2,rep(1,11)),lwd=2,lag.max=72)
+pacf(d1d12lnserie.lin, main = "PACF", ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=72)
+```
+
+Proposed models for clean series: Regular MA(1), MA(3), MA(7) and ARIMA(1,2) with Seasonal MA(1). 
+
+## 
+
+```{r}
+mod1x=arima(lnserie.lin,order=c(0,1,1),seasonal=list(order=c(0,1,1),period=12),
+             ,xreg=data.frame(wTradDays,wEast))
+mod2x=arima(lnserie.lin,order=c(0,1,2),seasonal=list(order=c(0,1,1),period=12),
+             # fixed = c(NA,0,NA,NA),
+             xreg=data.frame(wTradDays,wEast))
+mod3x=arima(lnserie.lin,order=c(0,1,11),seasonal=list(order=c(0,1,1),period=12),
+             # fixed = c(NA,0,NA,0,0,NA,0,NA,0,0,NA,NA),
+             xreg=data.frame(wTradDays,wEast))
+mod4x=arima(lnserie.lin,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12),
+             ,xreg=data.frame(wTradDays,wEast))
+mod5x=arima(lnserie.lin,order=c(1,1,5),seasonal=list(order=c(0,1,1),period=12),
+             ,xreg=data.frame(wTradDays,wEast))
+
+
+arimax_comp1 <- tibble::tibble(
+  "ARIMAX Model" = c("MA(1)", "MA(2)", "MA(11)", "ARMA(1,2)", "ARMA(1,5)"),
+  "Log-Likelihood" = round(c(mod1x$loglik, mod2x$loglik, mod3x$loglik, mod4x$loglik, mod5x$loglik),2),
+  "AIC" = round(c(mod1x$aic, mod2x$aic, mod3x$aic, mod4x$aic, mod5x$aic),2)
+)
+
+kable(arimax_comp1)
+```
+
+
+```{r}
+## MA 11
+ultim=c(2018,12)
+pdq=c(0,1,11)
+PDQ=c(0,1,1)
+
+# serie2=window(serie.lin,end=ultim)
+lnserie2=window(lnserie.lin,end=ultim)
+# serie1=window(serie.lin,end=ultim+c(1,0))
+lnserie1=window(lnserie.lin,end=ultim+c(1,0))
+
+modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
+modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12))
+
+pred=predict(modB,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+se<-ts(c(0,pred$se),start=ultim,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
+tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
+pr<-ts(exp(pr),start=ultim,freq=12)
+
+obs=window(serie,start=ultim)
+
+mod.RMSE1x=sqrt(sum((obs-pr)^2)/12)
+mod.MAE1x=sum(abs(obs-pr))/12
+mod.RMSPE1x=sqrt(sum(((obs-pr)/obs)^2)/12)
+mod.MAPE1x=sum(abs(obs-pr)/obs)/12
+mCI1x=mean(tu-tl)
+
+```
+
+```{r}
+## ARMA(1,2)
+ultim=c(2018,12)
+pdq=c(1,1,2)
+PDQ=c(0,1,1)
+
+# serie2=window(serie.lin,end=ultim)
+lnserie2=window(lnserie.lin,end=ultim)
+# serie1=window(serie.lin,end=ultim+c(1,0))
+lnserie1=window(lnserie.lin,end=ultim+c(1,0))
+
+modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
+modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12))
+
+pred=predict(modB,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+se<-ts(c(0,pred$se),start=ultim,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
+tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
+pr<-ts(exp(pr),start=ultim,freq=12)
+
+obs=window(serie,start=ultim)
+
+mod.RMSE2x=sqrt(sum((obs-pr)^2)/12)
+mod.MAE2x=sum(abs(obs-pr))/12
+mod.RMSPE2x=sqrt(sum(((obs-pr)/obs)^2)/12)
+mod.MAPE2x=sum(abs(obs-pr)/obs)/12
+mCI2x=mean(tu-tl)
+```
+
+
+```{r}
+arimax_comp2 <- tibble::tibble(
+  "ARIMAX model" = c("MA(11)", "ARMA(1,2)"),
+  "RMSE" = round(c(mod.RMSE1x, mod.RMSE2x), 2),
+  "MAE" = round(c(mod.MAE1x, mod.MAE2x), 2),
+  "RMSPE" = round(c(mod.RMSPE1x, mod.RMSPE2x), 2),
+  "MAPE" = round(c(mod.MAPE1x, mod.MAPE2x), 2),
+  "Mean CI" = round(c(mCI1x, mCI2x), 2)
+)
+
+kable(arimax_comp2)
+```
+
+##
+
+```{r}
+dplyr::bind_rows(comp_pred, arimax_comp2) |> kable()
+```
+
+
+## Conclusions
+
+
+
+
+
