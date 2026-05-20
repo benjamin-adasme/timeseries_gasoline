@@ -5,7 +5,10 @@ date: today
 author: "Abdelrahman Eissa & Benjamín Adasme"
 format: 
   revealjs:
-    echo: FALSE
+    echo: false
+    embed-resources: true
+execute: 
+  warning: false
 ---
 
 ## Purpose and motivation: Why gasoline?
@@ -23,6 +26,8 @@ Capture the temporal structure of gasoline consumption, isolate exogenous effect
 
 ```{r}
 library(knitr)
+library(kableExtra)
+library(dplyr)
 ```
 
 
@@ -73,7 +78,11 @@ comp_models <- tibble::tibble("Models" = c("MA(1)", "ARMA(1,1)", "MA(2)", "ARMA(
                           "MA(2)" = round(c(NA,NA,mod3$coef[2], mod4$coef[3]),2),
                           "SMA(1)" = round(c(mod1$coef[2], mod2$coef[3], mod3$coef[3], mod4$coef[4]),2))
 
-kable(comp_models)
+best_rows <- order(comp_models$AIC)[1:2]
+
+kbl(comp_models, booktabs = TRUE, caption = "ARIMA Models Comparison") %>%
+  kable_styling(latex_options = "hold_position", full_width = FALSE) %>%
+  row_spec(best_rows, bold = TRUE)
 ```
 
 Seasonal MA(1). All coefficients are significant. Two models selected: MA(2) and ARMA(1,2)
@@ -159,7 +168,7 @@ mCI2=mean(tu-tl)
 ARIMA(1,1,2) perfoms better than ARIMA(0,1,2) on the classic ARIMA approach
 
 ```{r}
-comp_pred <- tibble::tibble("Model" = c("MA(2)", "ARMA(1,2)"),
+comp_pred <- tibble::tibble("Model" = c("ARIMA(0,1,2)", "ARIMA(1,1,2)"),
                "RMSE" = round(c(mod.RMSE1, mod.RMSE2),2),
                "MAE" = round(c(mod.MAE1, mod.MAE2),2),
                "RMSPE" = round(c(mod.RMSPE1, mod.RMSPE2),2),
@@ -167,6 +176,7 @@ comp_pred <- tibble::tibble("Model" = c("MA(2)", "ARMA(1,2)"),
                "Mean CI" = round(c(mCI1, mCI2),2))
 
 kable(comp_pred)
+
 ```
 
 ## Calendar effects and outlier detection {.small}
@@ -190,13 +200,13 @@ modEC.atip=outdetec(mod4ECWD,dif=c(1,12),crit=2.6,LS=T)
 
 ##Tabla de at?picos encontrados con su fecha
 atipics=modEC.atip$atip[order(modEC.atip$atip[,1]),]
-meses=c("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic")
+# meses=c("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic")
 
-out_dates <- data.frame(atipics,Fecha=paste(meses[(atipics[,1]-1)%%12+1],start(serie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=atipics[,3])
-
-out_dates$W_coeff <- round(out_dates$W_coeff,3)
-out_dates$ABS_L_Ratio <- round(out_dates$ABS_L_Ratio,3)
-out_dates$perc.Obs <- round(out_dates$perc.Obs,3)
+# out_dates <- data.frame(atipics,Fecha=paste(meses[(atipics[,1]-1)%%12+1],start(serie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=atipics[,3])
+# 
+# out_dates$W_coeff <- round(out_dates$W_coeff,3)
+# out_dates$ABS_L_Ratio <- round(out_dates$ABS_L_Ratio,3)
+# out_dates$perc.Obs <- round(out_dates$perc.Obs,3)
 
 serie.lin <- lineal(serie, modEC.atip$atip)
 lnserie.lin=lineal(lnserie,modEC.atip$atip) # linearized series: free of outliers
@@ -254,9 +264,17 @@ arimax_comp1 <- tibble::tibble(
   "AIC" = round(c(mod1x$aic, mod2x$aic, mod3x$aic, mod4x$aic, mod5x$aic),2)
 )
 
-kable(arimax_comp1)
+best_rows <- order(arimax_comp1$AIC)[1:2]
+
+
+kbl(arimax_comp1, booktabs = TRUE, caption = "ARIMAX Models Comparison") %>%
+  kable_styling(latex_options = "hold_position", full_width = FALSE) %>%
+  row_spec(best_rows, bold = TRUE)
 ```
 
+Selected ARIMAX models for prediction: MA(11) and ARMA(1,2)
+
+##
 
 ```{r}
 ## MA 11
@@ -267,12 +285,14 @@ PDQ=c(0,1,1)
 # serie2=window(serie.lin,end=ultim)
 lnserie2=window(lnserie.lin,end=ultim)
 # serie1=window(serie.lin,end=ultim+c(1,0))
-lnserie1=window(lnserie.lin,end=ultim+c(1,0))
+# lnserie1=window(lnserie.lin,end=ultim+c(1,0))
 
-modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
-modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12))
+# modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
+modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12),
+           xreg=data.frame(wTradDays[1:312],wEast[1:312]))
 
-pred=predict(modB,n.ahead=12)
+pred=predict(modB,n.ahead=12, 
+             newxreg = data.frame(wTradDays[313:324],wEast[313:324]))
 pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
 se<-ts(c(0,pred$se),start=ultim,freq=12)
 
@@ -281,7 +301,7 @@ tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
 tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
 pr<-ts(exp(pr),start=ultim,freq=12)
 
-obs=window(serie,start=ultim)
+obs=window(serie.lin,start=ultim)
 
 mod.RMSE1x=sqrt(sum((obs-pr)^2)/12)
 mod.MAE1x=sum(abs(obs-pr))/12
@@ -300,12 +320,14 @@ PDQ=c(0,1,1)
 # serie2=window(serie.lin,end=ultim)
 lnserie2=window(lnserie.lin,end=ultim)
 # serie1=window(serie.lin,end=ultim+c(1,0))
-lnserie1=window(lnserie.lin,end=ultim+c(1,0))
+# lnserie1=window(lnserie.lin,end=ultim+c(1,0))
 
-modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
-modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12))
+# modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
+modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12),
+           xreg=data.frame(wTradDays[1:312],wEast[1:312]))
 
-pred=predict(modB,n.ahead=12)
+pred=predict(modB,n.ahead=12,
+             newxreg = data.frame(wTradDays[313:324],wEast[313:324]))
 pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
 se<-ts(c(0,pred$se),start=ultim,freq=12)
 
@@ -314,7 +336,7 @@ tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
 tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
 pr<-ts(exp(pr),start=ultim,freq=12)
 
-obs=window(serie,start=ultim)
+obs=window(serie.lin,start=ultim)
 
 mod.RMSE2x=sqrt(sum((obs-pr)^2)/12)
 mod.MAE2x=sum(abs(obs-pr))/12
@@ -324,9 +346,12 @@ mCI2x=mean(tu-tl)
 ```
 
 
+
+
+
 ```{r}
 arimax_comp2 <- tibble::tibble(
-  "ARIMAX model" = c("MA(11)", "ARMA(1,2)"),
+  "Model" = c("ARIMAX(0,1,11)", "ARIMAX(1,1,2)"),
   "RMSE" = round(c(mod.RMSE1x, mod.RMSE2x), 2),
   "MAE" = round(c(mod.MAE1x, mod.MAE2x), 2),
   "RMSPE" = round(c(mod.RMSPE1x, mod.RMSPE2x), 2),
@@ -334,19 +359,73 @@ arimax_comp2 <- tibble::tibble(
   "Mean CI" = round(c(mCI1x, mCI2x), 2)
 )
 
-kable(arimax_comp2)
+kbl(arimax_comp2, booktabs = TRUE, caption = "ARIMAX Models Prediction assesment") %>%
+  kable_styling(latex_options = "hold_position", full_width = FALSE)
 ```
+
+## Final comparison
+
+```{r}
+precomp <- bind_rows(comp_pred, arimax_comp2)
+
+final_comp <- tibble("Models" = c(comp_pred$Model, arimax_comp2$Model),
+                     "Log-Likelihood" = c(comp_models$`Log-Likelihood`[3:4],
+                                          arimax_comp1$`Log-Likelihood`[3:4]),
+                     "AIC" = c(comp_models$AIC[3:4],
+                                          arimax_comp1$AIC[3:4]))
+
+final_comp <- final_comp |> bind_cols(precomp[,-1])
+
+kbl(final_comp, booktabs = TRUE) |> 
+  kable_styling(latex_options = "hold_position", full_width = FALSE) |> 
+  row_spec(4, bold = T)
+
+```
+
 
 ##
 
+
 ```{r}
-dplyr::bind_rows(comp_pred, arimax_comp2) |> kable()
+#| fig-cap: "Final model forecast for the next 12 months"
+#| fig-height: 5
+ultim=c(2018,12)
+pdq=c(1,1,2)
+PDQ=c(0,1,1)
+
+mod_final <- arima(lnserie.lin, order = pdq, 
+                   seasonal = list(order=PDQ, seasonal=12),
+                   xreg = data.frame(wTradDays, wEast))
+
+newyear <- window(ts(rep(1,12),start=2020,freq=12))
+
+data=c(start(newyear)[1],start(newyear)[2], length(newyear))
+
+newWtrad <- Wtrad(data)
+newEast <- Weaster(data)
+
+pred=predict(mod_final,n.ahead=12,
+             newxreg = data.frame(newWtrad, newEast))
+pr<-ts(c(tail(lnserie.lin,1),pred$pred),start=ultim+c(1,0),freq=12)
+se<-ts(c(0,pred$se),start=ultim+c(1,0),freq=12)
+
+#Intervals
+tl1<-ts(exp(pr-1.96*se),start=ultim+c(1,0),freq=12)
+tu1<-ts(exp(pr+1.96*se),start=ultim+c(1,0),freq=12)
+pr1<-ts(exp(pr),start=ultim+c(1,0),freq=12)
+
+par(mar=rep(3,4))
+ts.plot(serie.lin,tl1,tu1,pr1,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=c(2015,2021), ylim=c(300,600),type="o",main=paste("Model ARIMAX(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12", "+CE",sep=""))
+abline(v=2015:2021,lty=3,col=4)
 ```
 
 
-## Conclusions
 
+## Conclusions {.smaller}
 
-
+- **Initial Paradox Explained**: Although uncorrected ARIMA models can occasionally yield lower point-prediction errors due to sheer luck or overfitting to historical noise, they remain statistically invalid.
+- **The ARIMAX Advantage**: Incorporating calendar effects and outliers via a SARIMAX(1,1,2) model properly addresses non-stationarity, successfully passes the Ljung-Box test, and eliminates residual patterns.
+- **Uncertainty Halved**: By accounting for external variations simultaneously through exogenous regressors ($xreg$), the ARIMAX model slashes the prediction interval width nearly in half, drastically reducing forecasting uncertainty.Strategic 
+- **Future Projection**: For robust future forecasting, this framework allows the model to seamlessly adapt to upcoming calendar structures while safely neutralizing past anomalous shocks.
 
 
