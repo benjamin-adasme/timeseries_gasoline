@@ -14,7 +14,7 @@ execute:
 ## Purpose and motivation: Why gasoline?
 
 - Importance in global economy 
-- Proxy of national economy's health
+- Proxy for the national economy's health
 - Diesel boom in Spain in the 90s
 - Energy transition and decarbonization
 
@@ -45,7 +45,7 @@ abline(h= 600)
 
 
 - The Box-Jenkins iterative method: Identification, Estimation, Validation, Prediction Assessment and Forecasting
-- From non-staionary to stationary series: logarithm, regular and seasonal differentiation.
+- From non-stationary to stationary series: logarithm, regular and seasonal differentiation.
 - Calendar effects: importance for gasoline consumption estimation
 - Outlier treatment: AO, TS, LS
 
@@ -165,7 +165,7 @@ mCI2=mean(tu-tl)
 
 ## 
 
-ARIMA(1,1,2) perfoms better than ARIMA(0,1,2) on the classic ARIMA approach
+ARIMA(1,1,2) performs better than ARIMA(0,1,2) on the classic ARIMA approach
 
 ```{r}
 comp_pred <- tibble::tibble("Model" = c("ARIMA(0,1,2)", "ARIMA(1,1,2)"),
@@ -181,7 +181,7 @@ kable(comp_pred)
 
 ## Calendar effects and outlier detection {.small}
 
-On the SARIMA(1,1,2)(0,1,1) was performed outlier detection to linearize the series. Also, it was included the calendar effect of working days and Easter holiday. 
+Outlier detection was performed on the SARIMA(1,1,2)(0,1,1) model to linearize the series. Also, it was included the calendar effect of working days and Easter holiday. 
 
 ```{r}
 source("CalendarEffects.r")
@@ -359,7 +359,7 @@ arimax_comp2 <- tibble::tibble(
   "Mean CI" = round(c(mCI1x, mCI2x), 2)
 )
 
-kbl(arimax_comp2, booktabs = TRUE, caption = "ARIMAX Models Prediction assesment") %>%
+kbl(arimax_comp2, booktabs = TRUE, caption = "ARIMAX Models Prediction assessment") %>%
   kable_styling(latex_options = "hold_position", full_width = FALSE)
 ```
 
@@ -425,7 +425,7 @@ abline(v=2015:2021,lty=3,col=4)
 
 - **Initial Paradox Explained**: Although uncorrected ARIMA models can occasionally yield lower point-prediction errors due to sheer luck or overfitting to historical noise, they remain statistically invalid.
 - **The ARIMAX Advantage**: Incorporating calendar effects and outliers via a SARIMAX(1,1,2) model properly addresses non-stationarity, successfully passes the Ljung-Box test, and eliminates residual patterns.
-- **Uncertainty Halved**: By accounting for external variations simultaneously through exogenous regressors ($xreg$), the ARIMAX model slashes the prediction interval width nearly in half, drastically reducing forecasting uncertainty.Strategic 
-- **Future Projection**: For robust future forecasting, this framework allows the model to seamlessly adapt to upcoming calendar structures while safely neutralizing past anomalous shocks.
+- **Uncertainty Halved**: By accounting for external variations simultaneously through exogenous regressors ($xreg$), the ARIMAX model slashes the prediction interval width nearly in half, drastically reducing forecasting uncertainty.
+- **Strategic Future Projection**: For robust future forecasting, this framework allows the model to seamlessly adapt to upcoming calendar structures while safely neutralizing past anomalous shocks.
 
 
