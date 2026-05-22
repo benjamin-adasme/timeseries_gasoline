@@ -274,7 +274,7 @@ kbl(arimax_comp1, booktabs = TRUE, caption = "ARIMAX Models Comparison") %>%
 
 Selected ARIMAX models for prediction: MA(11) and ARMA(1,2)
 
-##
+
 
 ```{r}
 ## MA 11
@@ -359,8 +359,8 @@ arimax_comp2 <- tibble::tibble(
   "Mean CI" = round(c(mCI1x, mCI2x), 2)
 )
 
-kbl(arimax_comp2, booktabs = TRUE, caption = "ARIMAX Models Prediction assessment") %>%
-  kable_styling(latex_options = "hold_position", full_width = FALSE)
+# kbl(arimax_comp2, booktabs = TRUE, caption = "ARIMAX Models Prediction assessment") %>%
+  # kable_styling(latex_options = "hold_position", full_width = FALSE)
 ```
 
 ## Final comparison

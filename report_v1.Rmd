@@ -3,8 +3,8 @@ title: "Report Gasoline"
 subtitle: "Time Series - MESIO UPC-UB"
 author: "Abdelrahman Eissa & Benjamín Adasme"
 date: "2026-05-18"
-output: 
-  pdf_document: 
+output:
+  pdf_document:
     toc: true
     toc_depth: 4
     df_print: kable
@@ -84,20 +84,28 @@ abline(h = mean(d1d12lnserie), col = 2, lty = 2)
 
 ### Estimation for plausible models
 
+In the model identification phase of the Box-Jenkins methodology, we analyze the autocorrelation function (ACF) and partial autocorrelation function (PACF) plots of the suitably differenced stationary time series to determine the appropriate autoregressive (AR) and moving average (MA) terms.
+Based on the visual inspection of the provided correlograms, we divide our identification process into two parts: the seasonal component and the regular (non-seasonal) component.
+
+
 ```{r}
 par(mfrow = c(1,2))
 acf(d1d12lnserie, main = "ACF", ylim=c(-1,1),col=c(2,rep(1,11)),lwd=2,lag.max=72)
 pacf(d1d12lnserie, main = "PACF", ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=72)
 ```
 
-Seasonal part: MA (1)
+**Seasonal Component Identification**: Because PACF shows significant activity at the first seasonal lag—rather than a clear, sharp cutoff that is shown in the ACF at the first seasonal lag moreover, a mixed seasonal process is the most appropriate choice. Therefore, we select a Seasonal ARMA(1,1) model to capture both the seasonal autoregressive (SAR) and seasonal moving average (SMA). 
 
-Regular part: 
+**Regular Component Identification**: 
 
-- MA(1)
-- ARMA(1,1)
-- MA(2)
-- ARMA(1,2)
+- MA(1): Proposed under the assumption that the regular ACF effectively cuts off after the very first lag, while the PACF tails off
+- ARMA(1,1): assuming both the ACF and PACF exhibit a tapering/decaying pattern from the first lag, capturing both a short-term autoregressive and moving average effect.
+- MA(2): Proposed to account for the possibility that the first two lags in the ACF are driving the moving average process before cutting off
+- ARMA(1,2) : mixed model included to capture any residual moving average dependencies up to the second lag while maintaining a first-order autoregressive term.
+
+
+
+
 
 ```{r}
 mod1=arima(lnserie,order=c(0,1,1),seasonal=list(order=c(0,1,1),period=12))
@@ -113,12 +121,21 @@ comp_models <- tibble::tibble("Models" = c("MA(1)", "ARMA(1,1)", "MA(2)", "ARMA(
                           "MA(2)" = round(c(NA,NA,mod3$coef[2], mod4$coef[3]),2),
                           "SMA(1)" = round(c(mod1$coef[2], mod2$coef[3], mod3$coef[3], mod4$coef[4]),2))
 
-comp_models
+library(kableExtra)
+library(dplyr)
+
+best_rows <- order(comp_models$AIC)[1:2]
+
+kbl(comp_models, booktabs = TRUE, caption = "Model Comparison") %>%
+  kable_styling(latex_options = "hold_position", full_width = FALSE) %>%
+  row_spec(best_rows, bold = TRUE)
 ```
 
-### Model validation
+As shown in the table above, an estimation comparison was conducted between the 4 selected models based on their goodness of fit and complexity. The results of **log likelihood** and **AIC** values indicate that  **MA(2)** and **ARMA(1,2)** exhibit the two best overall performing models. 
 
-```{r}
+Both models' residuals were evaluated, reaching the normality and independence requirements, as can be see in the next figures. However, the Ljung-Box test shows significant p-values starting lag 12 approximately, which is problematic since it means certain degree of autocorrelation in residuals^[See details in Appendices]. 
+
+```{r val_ma2, fig.cap="MA(2) residual validation", fig.height=3}
 
 mini_val <- function(model, datos){
   par(mfrow = c(2,2), mar=c(3,3,3,3))
@@ -146,16 +163,15 @@ mini_val(mod3, d1d12lnserie)
 ```
 
 
-```{r}
+```{r val_arma12, fig.cap="ARMA(1,2) residual validation", fig.height=3}
 mini_val(mod4, d1d12lnserie)
 ```
 
 
 ### Prediction assesment and forecasting
 
-- Both models are stable
+To evaluate the prediction performance, we checked the models' stability, it means the comparison between the coefficients of the model with the full series and with a restricted series without the las 12 observations. Both MA(2) and ARMA(1,2) showed stability since their coefficients don't change significantly under those conditions. 
 
-**MA(2) stability**
 
 ```{r}
 ultim=c(2018,12)
@@ -170,17 +186,15 @@ lnserie1=log(serie1)
 modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
 modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12))
 
-(ma_est <- tibble::tibble("Variables" = names(modA$coef),
+ma_est <- tibble("Variables" = names(modA$coef),
                          "Full" = round(coef(modA),2),
-                         "Cut" = round(coef(modB),2),
-                         "Diference" = abs(Full - Cut)))
+                         "Restricted" = round(coef(modB),2),
+                         "Diference" = abs(Full - Restricted))
 
+# t1 <- kable(ma_est, caption = "MA(2) stability")
 ```
 
 
-
-
-**ARMA(1,2) stability** 
 
 ```{r}
 ultim=c(2018,12)
@@ -194,15 +208,18 @@ lnserie1=log(serie1)
 
 modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12))
 modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12))
-
-(arma_est <- tibble::tibble("Variables" = names(modA$coef),
+arma_est <- tibble::tibble("Variables" = names(modA$coef),
                          "Full" = round(coef(modA),2),
-                         "Cut" = round(coef(modB),2),
-                         "Diference" = abs(Full - Cut)))
+                         "Restricted" = round(coef(modB),2),
+                         "Diference" = abs(Full - Restricted))
 
+# t2 <- kable(arma_est, caption = "ARMA(1,2) stability")
 
+kable(list(ma_est,arma_est), caption = "MA(2)(left) and ARMA(1,2)(right) stability")
 
 ```
+
+In terms of prediction, the plots show how MA(2) and ARMA(1,2) perform trying to forecast the values for the last year. Visualy speaking, we can see ARMA(1,2) has predicted points (in red) closer to the real value points (in black). 
 
 ```{r, fig.height=5}
 
@@ -280,6 +297,8 @@ mCI2=mean(tu-tl)
 ```
 
 
+The metrics also show better performance for ARMA(1,2) mainly for RMSE (`r round(mod.RMSE2,2)`) and MAE (`r round(mod.MAE2,2)`). Both models reach a mean confidence interval close to 63, and very similar RMSPE and MAPE. 
+
 ```{r}
 comp_pred <- tibble::tibble("Model" = c("MA(2)", "ARMA(1,2)"),
                "RMSE" = round(c(mod.RMSE1, mod.RMSE2),2),
@@ -291,7 +310,14 @@ comp_pred <- tibble::tibble("Model" = c("MA(2)", "ARMA(1,2)"),
 comp_pred
 ```
 
-**Selected model: ARMA(1,2)**
+At this point, our best model by Information Criteria and prediction performance seems to be the SARIMA(1,1,2)x(0,1,1), which can be formally described as:
+
+
+$$ 
+(1-\phi_1B)(1-B)(1-B^{12})X_t = (1 + \theta_1B + \theta_2B^2)(1+\Theta_1B^{12})Z_t
+$$
+
+With this full model, the forecast for the next 12 months is described in the next plot. As can be expected, the prediction follows the seasonal pattern very well, imitating the anual shape of the curve. 
 
 ```{r}
 ## Prediction modelo final:
@@ -338,7 +364,14 @@ abline(v=2015:2021,lty=3,col=4)
 
 
 
+However, the selected model still have a big problem: auto-regresive residuals. As we mentioned before, none of the proposed models passed the Ljung-Box test, which means that there are certain degree of auto-correlation in the residuals of the models. Since none of the proposed model avoid the problem we follow the next hypothesis: this could be corrected by taking into account some calendar effects and with automatic outlier detection. 
+
+
 ### ARIMAX Analysis: Outlier and Calendar Effects Treatment
+
+Following our hypothesis, and according to the nature of gasoline consumption, we belive there are two main calendar effects that are affecting our series: labor days and Easter holidays. It follows because on labor days there is more transit due to labor and educational activities. This pushes up the gasoline consumption and with more labor days in a month the consumption will rise. Easter holidays are a special case since it implies a high level of tourism and travels, but also because it changes its dates every year between March and April. So, we should take it into account these two conditions as important calendar effects. 
+
+To test the relevance of calendar effects we are creating two dummy variables to identify labor days and Easter across our series. Next, we use those as exogenous variables in our best model (in this case, ARIMA(1,1,2)). Then we test the significance of the model's terms as the ratio between coefficients and standard errors. 
 
 ```{r}
 source("CalendarEffects.r")
@@ -357,8 +390,13 @@ wEast=Weaster(data)
 
 mod4ECWD$coef/sqrt(diag(mod4ECWD$var.coef))
 
-tidy(mod4ECWD) 
+ec_val <- tidy(mod4ECWD) |> mutate(Significance = estimate/std.error) |> 
+  mutate(across(where(is.numeric), ~ round(.x,2)))
+
+kable(ec_val, caption = "Calendar Effect: coefficient validation")
 ```
+
+As can be seen in the table, the exogenous variables show to be significant to explain the observed series. After this, we are using the `outdetec` function to detect different kind of outliers: additive outliers, transitive change and level shift. The next table shows the observations identified as outlier and their classification. 
 
 ```{r}
 modEC.atip=outdetec(mod4ECWD,dif=c(1,12),crit=2.6,LS=T)
@@ -369,13 +407,13 @@ meses=c("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic")
 
 modEC.atip$sigma2
 
-out_dates <- data.frame(atipics,Fecha=paste(meses[(atipics[,1]-1)%%12+1],start(serie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=atipics[,3])
+out_dates <- data.frame(atipics,Date=paste(meses[(atipics[,1]-1)%%12+1],start(serie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=atipics[,3])
 
 out_dates$W_coeff <- round(out_dates$W_coeff,3)
 out_dates$ABS_L_Ratio <- round(out_dates$ABS_L_Ratio,3)
 out_dates$perc.Obs <- round(out_dates$perc.Obs,3)
 
-out_dates
+kable(out_dates, caption = "Detected outliers in Gasoline consumption series")
 ```
 
 
