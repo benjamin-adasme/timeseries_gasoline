@@ -23,16 +23,66 @@ knitr::opts_chunk$set(echo = F,
 
 ## Introduction
 
-Gasoline consumption is a critical indicator of economic activity and energy demand, deeply intertwined with global and regional dynamics. Worldwide, the demand for gasoline is primarily driven by factors such as population growth, and the volatile fluctuations in global oil prices. Recently, Spanish gasoline demand has been influenced by structural shifts in the energy sector, including the gradual but steady adoption of electric mobility, volatile fuel prices driven by geopolitical tensions, and changing consumer habits. Furthermore, predictable calendar effects—such as the distribution of working days and major holiday periods like Easter—play a significant role in the short-term fluctuations of domestic fuel consumption.
+Gasoline consumption is a critical indicator of economic activity and energy demand, deeply intertwined with global and regional dynamics. Worldwide, the demand for gasoline is primarily driven by factors such as population growth, and the volatile fluctuations in global oil prices. Recently, Spanish gasoline demand has been influenced by structural shifts in the energy sector, including changing consumer habits. Furthermore, the econometric modeling and forecasting of aggregate fuel demand represent a critical area of study within energy economics and macroeconomic planning. Specifically, the analysis of gasoline consumption serves multiple strategic purposes:
 
-To analyze and forecast these complex dynamics, this study utilizes the "Dataset Gasoline." This dataset provides a comprehensive time series of historical gasoline consumption in Spain, measured in thousands of tons. By capturing both the long-term trends and the short-term seasonal or anomalous shocks (such as sudden price hikes or economic downturns), the dataset offers a robust foundation for modeling the underlying behavior of Spanish fuel demand.
+- **Macroeconomic Proxy**: Liquid fuel consumption is heavily intertwined with aggregate economic activity. Because gasoline is primarily utilized for private mobility and light commercial transport, its demand acts as a highly sensitive, real-time proxy for the financial health of the national economy, reflecting fluctuations in household disposable income, consumer confidence, and overall domestic commerce.
+- **The Spanish Structural Paradigm (The "Dieselization" Boom)**: Analyzing the Spanish market between 1993 and 2019 offers a unique historical case study. During the 1990s and early 2000s, Spain experienced an unprecedented structural shift toward diesel-powered vehicles—heavily incentivized by favorable national tax frameworks and European automotive manufacturing strategies. Investigating gasoline demand during this timeframe allows researchers to quantify how a traditional fuel asset contracted and adapted under intense substitution pressure from alternative fossil fuels.
+- **Fiscal and Fiscal Policy Planning**: Hydrocarbon taxes constitute a substantial and predictable pillar of state revenue in Spain. Developing high-precision, short-to-medium-term forecasting models is paramount for fiscal authorities to optimize budgetary planning and accurately project tax receipts.
+- **Ecological Transition and Baseline Formulation**: In the current climate policy landscape, characterized by strict European decarbonization targets and the gradual penetration of electric and hybrid drivetrains, understanding the historical, uninterrupted stochastic behavior of fossil fuel demand is vital. This study establishes a rigorous "baseline" of traditional consumption patterns, which is essential for evaluating the real-world impact of ongoing energy transition policies.
+
+
+To analyze and forecast these  dynamics, this study utilizes the "Dataset Gasoline." This dataset provides a comprehensive time series of historical gasoline consumption in Spain. By capturing both the long-term trends and the short-term seasonal or anomalous shocks such as sudden price hikes or economic downturns, the dataset offers a robust foundation for modeling the underlying behavior of Spanish fuel demand.
+
+ 
 
 ### Objective
 The report focuses on modeling and forecasting gasoline consumption in Spain. To accurately capture the trends and variations in the data, the study contrasts two primary time series forecasting methodologies: a classic Box-Jenkins ARIMA approach and an advanced ARIMAX approach. The core objective is to identify a statistically valid model that can reliably predict future gasoline consumption by correctly handling underlying patterns, external calendar variations, and unexpected shocks to the dataset.
 
+```{r}
+serie=window(ts(read.table("Gasolina.dat"),start=1993,freq=12))
+```
+
+```{r}
+plot(serie, main="Gasoline consumption in Spain", ylab="Thousands of tons")
+abline(v=1993:2020,lty=3,col=4)
+abline(h= 600)
+```
+
 ## Methodology
 
 This study follows a rigorous and structured approach to time series forecasting, primarily divided into two main analytical frameworks: the Classic ARIMA approach and the ARIMAX approach. The goal is to systematically identify the underlying patterns in the gasoline consumption dataset, account for external variations, and develop a statistically robust model for accurate forecasting.
+
+```{r, fig.height=4, fig.width=5, fig.cap="Decomposition of log-transformed series"}
+lnserie <- log(serie)
+plot(decompose(lnserie))
+```
+
+### Variance and Mean Stabilization (Stationarity)
+
+A fundamental prerequisite for Box-Jenkins modeling is that the underlying stochastic process must be stationary in both variance and mean.
+
+- Variance Stabilization: Prior to any linear differentiation, the original gasoline consumption series $\{Y_t\}$ was evaluated to detect heteroskedasticity. Since the amplitude of the seasonal oscillations changed proportionally with the long-term trend, a natural logarithm transformation was applied to stabilize the conditional variance: $$Z_t = \ln(Y_t)$$
+
+This logarithmic transformation linearizes the exponential components and ensures that the variance remains constant ($\sigma^2$) across the entire historical horizon. 
+
+- Mean Stabilization (Differentiation): To eliminate non-stationarity in the mean caused by the secular downward trend and the cyclical annual patterns, log-differencing operators were implemented. First, a regular first-difference operator $(\nabla = 1 - B)$ was applied to remove the trend. Second, a seasonal difference operator $(\nabla_{12} = 1 - B^{12})$ with a period of $s = 12$ was applied to eliminate the annual seasonal component, where $B$ represents the backshift (lag) operator ($B^k X_t = X_{t-k}$). The fully stationarized series $W_t$ is defined as:$$W_t = \nabla \nabla_{12} Z_t = (1 - B)(1 - B^{12}) \ln(Y_t)$$
+
+```{r, fig.height=3, fig.cap="Non-constant variance series"}
+par(mfrow = c(1,2),
+    mar=c(4,3,3,2))
+boxplot(serie~floor(time(serie)), main="a) Boxplot by year", xlab="Year")
+m=apply(matrix(serie,nr=12),2,mean)
+v=apply(matrix(serie,nr=12),2,var)
+plot(m,v,xlab="Medias anuales",ylab="Varianzas anuales",main="b) Anual mean and variance")
+abline(lm(v~m),col=2,lty=3,lwd=2)
+
+```
+
+```{r,fig.cap="Stationary series"}
+d1d12lnserie <- diff(diff(lnserie,12))
+plot(d1d12lnserie, main=paste0("Stationary log-series - Mean: ", round(mean(d1d12lnserie),2)))
+abline(h = mean(d1d12lnserie), col = 2, lty = 2)
+```
 
 ### Classic ARIMA Approach 
 For the analysis, we followed the iterative Box-Jenkins methodology through its stages of identification, estimation, validation, and prediction. To transform the non-stationary series into a stationary one, we first stabilized the variance using a logarithmic transformation, and subsequently corrected the non-stationarity in the mean by applying both regular and seasonal differencing. The methodological design is further extended through the modeling of calendar effects—accounting for working days and the moving Easter effect—as well as the automatic detection of additive outliers, transitory changes, and level shifts.
@@ -54,51 +104,12 @@ Since real-world economic data like gasoline consumption is heavily influenced b
  - Arimax Remodeling:
   The original time series is "cleaned" by adjusting for the identified         calendar effects and deterministic outliers. With this adjusted series, the   entire Box-Jenkins process (Identification, Estimation, Diagnosis, and        Prediction) is repeated. This results in an ARIMAX model that inherently      controls for past anomalies and external factors, theoretically yielding a    more stationary residual series and more precise, reliable forecasts.
 
+
+
+
 ## Results and discussion
 
-### Classic ARIMA approach
-
-### Model identification
-
-```{r}
-serie=window(ts(read.table("Gasolina.dat"),start=1993,freq=12))
-```
-
-```{r}
-plot(serie, main="Gasoline consumption in Spain", ylab="Thousands of tons")
-abline(v=1993:2020,lty=3,col=4)
-abline(h= 600)
-```
-
-The model has a mean of `r round(mean(serie),2)` and a variance of `r round(sd(serie),2)`. Since we detect this time serie is not stationary, we applied the next transformations:
-
-- Box-Cox transformation: 
-- Seasonality:
-- Non-constant variance: 
-
-
-```{r, fig.height=3, fig.cap="Non-constant variance serie"}
-par(mfrow = c(1,2),
-    mar=c(4,3,3,2))
-boxplot(serie~floor(time(serie)), main="a) Boxplot by year", xlab="Year")
-m=apply(matrix(serie,nr=12),2,mean)
-v=apply(matrix(serie,nr=12),2,var)
-plot(m,v,xlab="Medias anuales",ylab="Varianzas anuales",main="b) Anual mean and variance")
-abline(lm(v~m),col=2,lty=3,lwd=2)
-
-```
-
-```{r, fig.height=4.5, fig.width=6, fig.cap="Decomposition of log-transformed series"}
-lnserie <- log(serie)
-plot(decompose(lnserie))
-```
-```{r}
-d1d12lnserie <- diff(diff(lnserie,12))
-plot(d1d12lnserie, main=paste0("Stationary series - Mean: ", round(mean(d1d12lnserie),2)))
-abline(h = mean(d1d12lnserie), col = 2, lty = 2)
-```
-
-
+## Classic ARIMA approach
 
 ### Estimation for plausible models
 
@@ -239,7 +250,7 @@ kable(list(ma_est,arma_est), caption = "MA(2)(left) and ARMA(1,2)(right) stabili
 
 In terms of prediction, the plots show how MA(2) and ARMA(1,2) perform trying to forecast the values for the last year. Visualy speaking, we can see ARMA(1,2) has predicted points (in red) closer to the real value points (in black). 
 
-```{r, fig.height=5}
+```{r, fig.height=5, fig.cap="Prediction assesment for the last 12 months"}
 
 ### MA(2) plot
 
@@ -331,13 +342,15 @@ comp_pred
 At this point, our best model by Information Criteria and prediction performance seems to be the SARIMA(1,1,2)x(0,1,1), which can be formally described as:
 
 
-$$ 
-(1-\phi_1B)(1-B)(1-B^{12})X_t = (1 + \theta_1B + \theta_2B^2)(1+\Theta_1B^{12})Z_t
-$$
+
+\begin{align*}
+(1-\phi_1B)(1-B)(1-B^{12})X_t = (1 + \theta_1B + \theta_2B^2)(1+\Theta_1B^{12})Z_t \\
+(1-0.99B)(1-B)(1-B^{12})_t = (1 - 1.73B + 0.75 B^2)(1+-0.92B^{12})Z_t
+\end{align*}
 
 With this full model, the forecast for the next 12 months is described in the next plot. As can be expected, the prediction follows the seasonal pattern very well, imitating the anual shape of the curve. 
 
-```{r}
+```{r, fig.cap="SARIMA(1,1,2)x(0,1,1)12"}
 ## Prediction modelo final:
 
 pdq=c(1,1,2)
@@ -406,7 +419,7 @@ wEast=Weaster(data)
 mod4ECWD=arima(lnserie,order=c(1,1,2),seasonal=list(order=c(0,1,1),period=12),
                 xreg=data.frame(wTradDays,wEast))
 
-mod4ECWD$coef/sqrt(diag(mod4ECWD$var.coef))
+# mod4ECWD$coef/sqrt(diag(mod4ECWD$var.coef))
 
 ec_val <- tidy(mod4ECWD) |> mutate(Significance = estimate/std.error) |> 
   mutate(across(where(is.numeric), ~ round(.x,2)))
@@ -436,7 +449,7 @@ kable(out_dates, caption = "Detected outliers in Gasoline consumption series")
 
 At this point, with calendar effects and outlier detection, we can "clean" our series taking out those atypical patterns. The new series will be a linear combination of the original one and its outliers. Then, we will fit our selected model over this new series, with calendar effects as regressors to extract their coefficients. With estimated effects, our clean series would result from the free-of-outlier series minus their calendar effects. Here we can see the estimated calendar effects and our original series along with the clean one.  
 
-```{r}
+```{r, fig.cap="Calendar effects and linearized series"}
 serie.lin <- lineal(serie, modEC.atip$atip)
 lnserie.lin=lineal(lnserie,modEC.atip$atip) # linearized series: free of outliers
 
@@ -614,15 +627,58 @@ kbl(final_comp, booktabs = TRUE, caption = "ARIMA and ARIMAX models comparison")
 
 ```
 
-Looking the results, we realized there is a paradox. On one side we have ARIMA models with great point prediction metrics. We could think this is perfect for forecast and future decisions about the gasoline. But they don't take into account the outilers and calendar effects. On the other side, ARIMAX models don't perform as well in RMSE, MAE and other metrics. Instead, they improve significantly the AIC score and reduce by almost half the mean confidence interval. In other words, 
+Looking the results, we realized there is a paradox. On one side we have ARIMA models with great point prediction metrics. We could think this is perfect for forecast and future decisions about the gasoline. But they don't take into account the outilers and calendar effects. On the other side, ARIMAX models don't perform as well in RMSE, MAE and other metrics. Instead, they improve significantly the AIC score and reduce by almost half the mean confidence interval. In other words, ARIMA models provide good prediction but with high uncertainty while ARIMAX models don't are too pointly accurate but they are less uncertain and provide best information criteria. Which on is the better choice?
+
+We suggest that the best model for the gasoline consumption is **ARIMAX(1,1,2)**. Despite it may look a weak model for prediction, we find several reasons to choose it. The empirical findings of this study demonstrate that evaluating time series models solely through traditional point-prediction error metrics—such as RMSE or MAE—can be fundamentally misleading. While an uncorrected ARIMA model may occasionally yield lower localized errors during a specific test horizon, this phenomenon is often an artifact of overfitting to historical noise rather than a reflection of true predictive power. In contrast, the integration of deterministic components via the SARIMAX framework proved statistically essential. By simultaneously controlling for holiday variations, trading day variations, and historical anomalies through the incorporation of calendar effects and outliers, the underlying stochastic signal of the series was successfully isolated. 
+
+This structural refinement resulted in a dramatic improvement in the Akaike Information Criterion (AIC), falling from -1225.50 in the univariate ARIMA model to -1565.74 in the optimal ARIMAX specification. Furthermore, by accounting for these external shocks within the exogenous regressor matrix ($\text{xreg}$), the model achieved a high degree of parsimony. It effectively substituted a convoluted, overparameterized error structure for an elegant $\text{ARIMAX}(1,1,2)$ specification that relies on far fewer parameters while ensuring that the model's residuals successfully conform to white noise under the Ljung-Box test. Most importantly for operational decision-making, extracting this systemic variance drastically reduced forecasting uncertainty, shrinking the mean prediction interval width nearly in half (from 63.52 to 35.36). Consequently, the $\text{ARIMAX}(1,1,2)$ model stands as the mathematically superior and most risk-averse framework for long-term strategic planning, capable of dynamically adapting to future calendar structures without being derailed by past anomalous volatility.
+
+
+The final model can be written in it formula as: 
+
+$$(1 - 0.9703 B)(1 - B)(1 - B^{12}) \left[ y_t - 0.0042 \cdot \text{wTradDays}_t - 0.0334 \cdot \text{wEast}_t \right] = (1 - 1.7674 B + 0.8044 B^2)(1 - 0.8272 B^{12}) Z_t$$
+
+```{r, fig,cap="SARIMAX(1,1,2)x(0,1,1)12 final forecast"}
+ultim=c(2018,12)
+pdq=c(1,1,2)
+PDQ=c(0,1,1)
+
+mod_final <- arima(lnserie.lin, order = pdq, 
+                   seasonal = list(order=PDQ, seasonal=12),
+                   xreg = data.frame(wTradDays, wEast))
+
+newyear <- window(ts(rep(1,12),start=2020,freq=12))
+
+data=c(start(newyear)[1],start(newyear)[2], length(newyear))
+
+newWtrad <- Wtrad(data)
+newEast <- Weaster(data)
+
+pred=predict(mod_final,n.ahead=12,
+             newxreg = data.frame(newWtrad, newEast))
+pr<-ts(c(tail(lnserie.lin,1),pred$pred),start=ultim+c(1,0),freq=12)
+se<-ts(c(0,pred$se),start=ultim+c(1,0),freq=12)
+
+#Intervals
+tl1<-ts(exp(pr-1.96*se),start=ultim+c(1,0),freq=12)
+tu1<-ts(exp(pr+1.96*se),start=ultim+c(1,0),freq=12)
+pr1<-ts(exp(pr),start=ultim+c(1,0),freq=12)
+
+par(mar=rep(3,4))
+ts.plot(serie.lin,tl1,tu1,pr1,lty=c(1,2,2,1),col=c(1,4,4,2),xlim=c(2015,2021), ylim=c(300,600),type="o",main=paste("Model ARIMAX(",paste(pdq,collapse=","),")(",paste(PDQ,collapse=","),")12", "+CE",sep=""))
+abline(v=2015:2021,lty=3,col=4)
+```
+
 
 ## Conclusions
 
-- **Initial Paradox Explained**: Although uncorrected ARIMA models can occasionally yield lower point-prediction errors due to sheer luck or overfitting to historical noise, they remain statistically invalid.
-- **The ARIMAX Advantage**: Incorporating calendar effects and outliers via a SARIMAX(1,1,2) model properly addresses non-stationarity, successfully passes the Ljung-Box test, and eliminates residual patterns.
-- **Uncertainty Halved**: By accounting for external variations simultaneously through exogenous regressors ($xreg$), the ARIMAX model slashes the prediction interval width nearly in half, drastically reducing forecasting uncertainty.
-- **Strategic Future Projection**: For robust future forecasting, this framework allows the model to seamlessly adapt to upcoming calendar structures while safely neutralizing past anomalous shocks.
+The empirical findings of this study highlight a critical econometric paradox: relying solely on localized point-prediction errors (such as RMSE or MAE) can be highly misleading. While an uncorrected ARIMA model may occasionally mimic the data quite closely over a specific test horizon, this phenomenon is typically driven by sheer luck or severe overfitting to historical noise. Because it leaves systematic patterns unaddressed, the univariate model fails basic residual diagnostics, rendering its forecasts statistically invalid. 
 
+In contrast, the ARIMAX advantage lies in its ability to simultaneously isolate structural shocks from the true underlying stochastic process. By integrating calendar effects and historical outliers directly into the model via a $\text{SARIMAX}(1,1,2)$ specification, we successfully capture the series' true dynamics, eliminate persistent residual patterns, and comfortably pass the Ljung-Box test for white noise.
+
+Crucially, accounting for these external variations through simultaneous exogenous regressors ($\text{xreg}$) drastically reduces forecasting uncertainty. By absorbing the volatile "swings" caused by trading days and holidays, the model slashes the mean prediction interval width nearly in half. This provides decision-makers with a highly tightened, risk-managed boundary for future planning rather than a wide, uninformative margin of error.
+
+Ultimately, this framework ensures a highly strategic projection into the future. By relying on a parsimonious yet robust mathematical structure, the model is fully equipped to seamlessly adapt to upcoming calendar configurations for unobserved years while safely neutralizing the echo of past anomalous shocks.
 
 \newpage
 
@@ -758,5 +814,33 @@ validation(mod3, d1d12lnserie)
 
 ```{r}
 validation(mod4, d1d12lnserie)
+```
+
+### ARIMAX models validation detailed
+
+
+#### MA(11)
+
+```{r}
+validation(mod3x, d1d12lnserie.lin)
+```
+
+#### ARMA(1,2)
+
+```{r}
+validation(mod4x, d1d12lnserie.lin)
+```
+
+### Models outputs
+
+#### SARIMA(1,1,2)x(0,1,1)12
+```{r}
+mod4
+```
+
+#### SARIMAX(1,1,2)x(0,1,1)12 with outlier and calendar effects treatment
+
+```{r}
+mod4x
 ```
 
