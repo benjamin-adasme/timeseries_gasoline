@@ -23,20 +23,36 @@ knitr::opts_chunk$set(echo = F,
 
 ## Introduction
 
-- Gasoline consumption in Spain and the world: factors
-- Dataset Gasoline
-- Objectives 
+Gasoline consumption is a critical indicator of economic activity and energy demand, deeply intertwined with global and regional dynamics. Worldwide, the demand for gasoline is primarily driven by factors such as population growth, and the volatile fluctuations in global oil prices. Recently, Spanish gasoline demand has been influenced by structural shifts in the energy sector, including the gradual but steady adoption of electric mobility, volatile fuel prices driven by geopolitical tensions, and changing consumer habits. Furthermore, predictable calendar effects—such as the distribution of working days and major holiday periods like Easter—play a significant role in the short-term fluctuations of domestic fuel consumption.
+
+To analyze and forecast these complex dynamics, this study utilizes the "Dataset Gasoline." This dataset provides a comprehensive time series of historical gasoline consumption in Spain, measured in thousands of tons. By capturing both the long-term trends and the short-term seasonal or anomalous shocks (such as sudden price hikes or economic downturns), the dataset offers a robust foundation for modeling the underlying behavior of Spanish fuel demand.
+
+### Objective
+The report focuses on modeling and forecasting gasoline consumption in Spain. To accurately capture the trends and variations in the data, the study contrasts two primary time series forecasting methodologies: a classic Box-Jenkins ARIMA approach and an advanced ARIMAX approach. The core objective is to identify a statistically valid model that can reliably predict future gasoline consumption by correctly handling underlying patterns, external calendar variations, and unexpected shocks to the dataset.
 
 ## Methodology
 
-Explain the methodology (steps, approaches, etc. )
+This study follows a rigorous and structured approach to time series forecasting, primarily divided into two main analytical frameworks: the Classic ARIMA approach and the ARIMAX approach. The goal is to systematically identify the underlying patterns in the gasoline consumption dataset, account for external variations, and develop a statistically robust model for accurate forecasting.
 
-- Classic ARIMA: Box-jenkins method for time series: transform into stationary, (P)ACF, propose models and evaluate them.
-  -Identification
-  - Estimation
-  - Diagnosis and validation
-  - Prediction and forecasting
-- ARIMAX: calendar effects and outlier treatment: clean by calendar effect and outlier detection -> repeat process of classic ARIMA
+### Classic ARIMA Approach 
+For the analysis, we followed the iterative Box-Jenkins methodology through its stages of identification, estimation, validation, and prediction. To transform the non-stationary series into a stationary one, we first stabilized the variance using a logarithmic transformation, and subsequently corrected the non-stationarity in the mean by applying both regular and seasonal differencing. The methodological design is further extended through the modeling of calendar effects—accounting for working days and the moving Easter effect—as well as the automatic detection of additive outliers, transitory changes, and level shifts.
+  -Identification: 
+  Once stationarity is achieved, the Autocorrelation Function (ACF) and         Partial Autocorrelation Function (PACF) are plotted and analyzed to identify   potential autoregressive (AR) and moving average (MA) terms, yielding a set   of plausible candidate models.
+  - Estimation:
+  For each of the proposed candidate models, the parameters (coefficients for   the AR and MA terms) are estimated, typically using Maximum Likelihood        Estimation (MLE). During this phase, the models are evaluated and compared    using goodness-of-fit criteria, primarily the Akaike Information Criterion    (AIC), to determine which model best captures the data's structure with the   optimal number of parameters.
+  - Diagnosis and validation:
+  The selected models are then subjected to rigorous diagnostic checks to       ensure their statistical validity. This step focuses on analyzing the         models' residuals, which should ideally behave as white noise. Various        statistical tests are employed, including the Ljung-Box test to verify the    absence of autocorrelation, the Shapiro-Wilk or Jarque-Bera tests for         normality, and tests for homoscedasticity.
+  - Prediction and forecasting:
+  Once a valid model is established, it is used to generate point forecasts     and confidence intervals for future gasoline consumption. The model's         predictive accuracy is evaluated by comparing out-of-sample forecasts         against actual data using standard error metrics such as the Root Mean        Squared Error (RMSE) and Mean Absolute Error (MAE), confidence interval and   other amtrics.
+  
+### ARIMAX Approach
+Since real-world economic data like gasoline consumption is heavily influenced by exogenous events and calendar anomalies, the classic ARIMA framework is often insufficient on its own. The second phase of the methodology addresses these limitations through an ARIMAX.
+  - Calendar Effects: 
+  We introduce dummy variables to account for known calendar variations that    systematically impact fuel consumption, such as the trading day effect (the   composition of weekdays versus weekends in a given month) and the Easter      effect.
+  - Outlier Treatment:
+  An automatic outlier detection procedure is applied to identify significant   anomalies in the historical data, such as Additive Outliers (AO), Level       Shifts (LS), and Temporary Changes (TC). These outliers can distort           parameter estimation and residual diagnostics if left untreated.
+ - Arimax Remodeling:
+  The original time series is "cleaned" by adjusting for the identified         calendar effects and deterministic outliers. With this adjusted series, the   entire Box-Jenkins process (Identification, Estimation, Diagnosis, and        Prediction) is repeated. This results in an ARIMAX model that inherently      controls for past anomalies and external factors, theoretically yielding a    more stationary residual series and more precise, reliable forecasts.
 
 ## Results and discussion
 
