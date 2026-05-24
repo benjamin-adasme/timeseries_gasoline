@@ -11,6 +11,10 @@ output:
     fig_height: 4
 ---
 
+## Academic Integrity Declaration
+
+"We Abdelrahman Eissa and Benjamín Adasme hereby declare that we adhere to the UPC academic integrity commitment and that this project has been completed honestly, collaboratively, and in accordance with the established guidelines, with all sources properly acknowledged."
+
 \newpage
 \tableofcontents
 \newpage
@@ -20,6 +24,8 @@ knitr::opts_chunk$set(echo = F,
                       message = F,
                       warning = F)
 ```
+
+
 
 ## Introduction
 
